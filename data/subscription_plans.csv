@@ -1,0 +1,8 @@
+plan_id,plan_name,billing_interval,price,record_source
+1,Free,monthly,0.0,original
+2,Basic,monthly,19.0,original
+3,Pro,monthly,49.0,original
+4,Premium,monthly,99.0,original
+5,Basic,annual,190.0,original
+6,Pro,annual,490.0,original
+7,Premium,annual,990.0,original

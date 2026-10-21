@@ -1,0 +1,4 @@
+record_source,status,cases,at_risk_amount,modeled_recovered_amount,modeled_amount_recovery_pct
+original_derived,requires_review,4797,240760.00,0.00,0.00
+synthetic,recovered,30839,1644008.00,1644008.00,100.00
+synthetic,unrecovered,14201,761892.00,0.00,0.00

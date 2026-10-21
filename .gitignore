@@ -1,0 +1,38 @@
+# Local credentials and environment files
+.env
+.env.*
+!.env.example
+.pgpass
+pgpass.conf
+*.pgpass
+
+# Editor and operating-system files
+.vscode/
+.idea/
+*.code-workspace
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local PostgreSQL data, dumps, and backups
+pgdata/
+postgres-data/
+*.dump
+*.backup
+
+# Logs, scratch files, and local query-plan exports
+*.log
+*.tmp
+*.temp
+*.bak
+*.plan
+*.sql~
+~$*
+
+# Source archives are not needed after the documented CSVs are extracted
+data/*.zip
+data/*.tar
+data/*.tar.gz
+
+# Local development instructions
+AGENTS.md
