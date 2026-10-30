@@ -1,0 +1,37 @@
+{
+  "model": "IsolationForest",
+  "seed": 42,
+  "features": [
+    "log_amount",
+    "due_days",
+    "tenure_days",
+    "prior_gap_days",
+    "first_invoice"
+  ],
+  "train_before": "2025-01-01",
+  "calibration_before": "2026-01-01",
+  "test_through": "2026-09-30",
+  "rows_by_period": {
+    "calibration": 246472,
+    "test": 222909,
+    "train": 156942
+  },
+  "threshold": 0.717315839429838,
+  "threshold_policy": "strictly above calibration 99th percentile",
+  "source_sha256": {
+    "invoices": "1a1470957d996969f199a1381f8dd1e3e84246b25d24479f65f1c0c1d8829f8b",
+    "subscriptions": "f997e6990c2136a4f092202925294020d4e42724aca6172e21428b3b686b556e",
+    "payments": "38c254dc195c4a6ca759f8e381f4546b2d938ab2da631de66d5ddc749ee401a3"
+  },
+  "python": "3.11.9",
+  "pandas": "3.0.3",
+  "numpy": "2.4.6",
+  "sklearn": "1.9.1",
+  "limitations": [
+    "No independently verified anomaly labels; no accuracy claimed",
+    "Mixed source/synthetic training; distribution shift can dominate scores",
+    "Same subscriptions may occur across time periods",
+    "Invoice-time novelty detection, not future payment-failure prediction",
+    "No model tuning on test outcomes; SQL overlap is retrospective only"
+  ]
+}

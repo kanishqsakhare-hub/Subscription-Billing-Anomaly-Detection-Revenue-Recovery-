@@ -1,10 +1,10 @@
-# SaaS Subscription Revenue Assurance & Billing Anomaly Detection
+# Subscription Billing Anomaly Detection and Revenue Recovery
 
 A PostgreSQL project for reconciling subscription billing events, identifying records that require review, measuring modeled recovery, and analyzing churn and retention. It keeps invoices, payments, attempts, refunds, and recovery events at their correct grains so inconsistencies remain visible instead of being hidden by summary reporting.
 
-The implementation is SQL-only: PostgreSQL SQL, PL/pgSQL, `psql`, and `\copy`. It includes a constrained relational schema, reproducible import, 29 business analyses, integrity and financial tests, functions and procedures, workflow triggers, transaction demonstrations, four result exports, and measured query-plan optimization.
+The current implementation uses PostgreSQL SQL, PL/pgSQL, `psql`, and `\copy`. It includes a constrained relational schema, reproducible import, 29 business analyses, integrity and financial tests, functions and procedures, workflow triggers, transaction demonstrations, four result exports, and measured query-plan optimization.
 
-All figures below were reproduced on **PostgreSQL 18.4** on **2026-10-21** from the ten repository CSVs. The clean audit loaded **2,207,973 rows**.
+The repository records an earlier audit on **2026-10-21**. A live-database recheck on **2026-10-31**, using PostgreSQL 18.4, confirmed **2,207,973 rows**, the reported MRR and retention range, and 4,797 original billing conflicts. Historical benchmark timings have not been independently re-established; see the evidence status below.
 
 ## Table of contents
 
@@ -48,7 +48,7 @@ This project builds an auditable PostgreSQL model around those problems. It pres
 | Optimization | `EXPLAIN (ANALYZE, BUFFERS)`, repeat runs, partial and covering indexes |
 | Outputs | SQL-generated CSVs and SVG documentation assets |
 
-No Python, JavaScript, notebook, dashboard, web service, or application framework is required.
+The PostgreSQL core runs independently. The optional Python novelty-detection extension requires the pinned packages in `python/requirements.txt`; no dashboard or web service is required.
 
 ## Dataset and provenance
 
@@ -230,6 +230,8 @@ All **2,166** plan changes are upgrades of exactly **19.00** normalized MRR, tot
 
 ## Performance optimization
 
+**Evidence status (2026-10-31):** The table and graphic below preserve previously recorded results. Their original raw execution plans are not present in this repository. The SQL comments contain additional historical runs with different timings. A fresh indexed-only check returned 1,997.311 ms and 2,122.875 ms for B1; it does not establish a new before/after speedup. Do not describe the historical 94.9% reduction as independently reproduced by this recheck. A clean baseline is pending authentication setup for a separate database.
+
 [sql/07_query_optimization.sql](sql/07_query_optimization.sql) runs each benchmark twice before and after indexing. The table uses the warm second execution from the clean audit with `jit=off`, `track_io_timing=on`, `work_mem='4MB'`, and two parallel workers.
 
 ![Before-and-after query performance](assets/benchmark-comparison.svg)
@@ -337,4 +339,106 @@ Apply the same variable to `02_import.sql`, `06_advanced_sql.sql`, `07_query_opt
 
 This project turns a 2.2-million-row hybrid subscription dataset into a reproducible PostgreSQL revenue-assurance workflow. It enforces relational integrity, preserves known inconsistencies, reconciles money at the invoice grain, distinguishes observed records from modeled recovery, and documents review candidates without overstating their meaning.
 
-The verified analysis establishes a **29,835,866.00** net collection proxy, **1,549,314.17** contracted MRR, a **52.91%** synthetic retry recovery rate, and mature 12-month retention between **66.22% and 74.20%**. The advanced SQL layer adds auditable case management, while measured indexing reduces the most expensive effective-plan query by **94.9%** and deliberately leaves broad scans unindexed when they show no benefit.
+The verified analysis establishes a **29,835,866.00** net collection proxy, **1,549,314.17** contracted MRR, a **52.91%** synthetic retry recovery rate, and mature 12-month retention between **66.22% and 74.20%**. The advanced SQL layer adds auditable case management, while the benchmark harness evaluates indexing with repeated execution plans. The historical **94.9%** reduction remains subject to the evidence qualification above.
+
+## Interview walkthrough
+
+### What this project actually implements
+
+> I built a PostgreSQL subscription billing reconciliation project using 2.21 million records across ten source tables. It flags rule-based invoice and payment inconsistencies, measures contracted MRR and maturity-adjusted retention, and analyzes simulated recovery outcomes. I used PL/pgSQL functions, procedures, triggers, and a reconciliation queue to demonstrate a review workflow. I also built a repeated EXPLAIN ANALYZE benchmark for indexing.
+
+The core implements descriptive financial analysis and rule-based detection. A separate Python extension now uses pandas, NumPy and scikit-learn Isolation Forest to score invoice novelty. It does not implement acquisition-funnel friction analysis, fake engagement detection, or future payment-failure prediction. Its payment retry funnel is a modeled billing sequence, not a behavioral acquisition funnel. The Python extension was added after the core; do not imply it was part of the original SQL implementation or original development dates.
+
+### Resume claim to implementation
+
+| Claim | Open this implementation | Evidence and qualification |
+|---|---|---|
+| 2.21 million rows across ten tables | `database/01_schema.sql`, `database/02_import.sql`, `tests/data_integrity.sql` | Live counts total 2,207,973; keys, null policy, relationships and provenance checks pass. |
+| Financial reconciliation without multiplying amounts | `sql/02_revenue_analysis.sql` Q1/Q3; `sql/06_advanced_sql.sql`, `fn_invoice_reconciliation` | Aggregate each financial layer before joining; do not add attempts or modeled recoveries to collected cash. Current invoices have one payment each. |
+| Contracted MRR | `sql/02_revenue_analysis.sql` Q5 | 1,549,314.17 at 2026-09-30; annual prices divided by 12 and effective plan history applied. |
+| Mature cohort retention | `sql/05_churn_retention.sql` Q2 | 12-month range reproduced: 66.22%-74.20%; only subscriptions old enough to reach each measurement age enter its denominator. |
+| 4,797 invoice/payment conflicts | `sql/03_billing_anomalies.sql` Q1/Q2; `tests/financial_reconciliation.sql` | Original failed payments aligned to paid invoices; inferred linkage means investigation candidates, not confirmed loss. |
+| Functions, procedures and triggers | `sql/06_advanced_sql.sql` | Live demonstrations passed on 2026-10-31, including exceptions, parent validation, duplicate queueing, legal/illegal transitions and rollback. |
+| Indexing and EXPLAIN ANALYZE | `database/03_indexes.sql`, `sql/07_query_optimization.sql` | Four indexes installed; historical 23.17s to 1.19s timings lack retained raw plans. Current indexed-only timings cannot verify the historical percentage. |
+
+### Five-minute demonstration
+
+1. Open the schema and explain invoices, payments, attempts, refunds and recovery as different event grains.
+2. Run `tests/data_integrity.sql`. Explain that the 22 pre-payment refunds are intentionally preserved failures, not silently corrected data.
+3. Open billing Q1 and show why the 4,797 original conflicts require review. Contrast inferred linkage with a native payment-provider invoice reference.
+4. Open revenue Q5 and retention Q2. Explain monthly normalization, effective dates, the reporting snapshot, and cohort maturity.
+5. Run `sql/06_advanced_sql.sql` in a project demonstration database. It installs objects and exercises queue writes; demo rows are removed or rolled back. It is not a read-only script.
+6. Open the benchmark harness and explain the effective-plan lookup index, repeated runs, cache effects, and why broad scans may not benefit from an index. State the historical evidence limitation explicitly.
+
+Use the commands in Reproducing the project. The analysis scripts with `\copy` regenerate their named result CSVs. Preserve an export before rerunning if you need to compare it. Never rerun the import into populated tables.
+
+### Questions to prepare for
+
+**How does anomaly detection work without ML?** Explicit SQL rules compare related records and expected billing behavior. For example, a paid invoice with no successful payment is a review candidate. Rules are interpretable but cannot establish intent or detect every unknown pattern.
+
+**How did you prevent double-counting?** Payments and attempts represent different layers. Financial totals come from payment rows; refunds and recoveries are aggregated separately. Joining raw attempts to payments before summing would repeat payment values for invoices with retries.
+
+**Did you recover real revenue?** No. Recovery amounts describe synthetic scenarios. The operational queue demonstrates how a reviewer could investigate a discrepancy; it does not contact a payment gateway or collect money.
+
+**Why adjust retention for maturity?** A subscription that began six months ago cannot have an observed twelve-month outcome. Including it in the twelve-month denominator would bias the rate downward.
+
+**What exactly improved with indexing?** The benchmark's MRR function repeatedly looks up effective plan history. The index on subscription and descending effective date supports that lookup. Historical timings were recorded as 23.17s and 1.19s; original raw plans are unavailable, so the exact historical improvement remains unverified. Do not present a fresh indexed-only run as a before/after comparison.
+
+**What does the Python model add?** It ranks invoice patterns that differ from earlier invoices using an unsupervised Isolation Forest. It uses invoice-time features and evaluates on later periods. It complements explicit reconciliation rules; no independent labels exist to establish detection accuracy. Synthetic review flags are not proof of fraud.
+
+**What would production need?** Native provider identifiers, clear event-time and end-date policies, partial-payment and refund handling, incremental ingestion, concurrency tests, monitored reconciliation jobs, and reviewed resolution reasons.
+
+### Known implementation limits to disclose
+
+- Snapshot MRR excludes subscriptions on their end date; the reusable MRR function includes that date. Use the snapshot query's explicit eligibility filter when reproducing the quoted figure. This inconsistency is documented and remains unfixed because the existing SQL files are preserved.
+- Retention counts an end date equal to the measurement date as retained. Explain this inclusive retention convention rather than assuming it matches the MRR convention.
+- The reconciliation function checks successful amounts rather than successful-row existence. A hypothetical successful zero-value payment could be classified as missing success. The supplied data contains no such flagged paid/successful zero-value cases, but this is a limitation for extending the workflow to free invoices.
+- The monthly churn numerator is not explicitly restricted to the opening population. Subscriptions starting and ending in the same month could distort that rate in another dataset.
+- An anomaly query reporting zero candidates means its rule found no matches in this dataset; it does not prove all billing is correct.
+- The visible Git commit is dated 2026-10-21. Repository evidence does not establish February-March development dates; use actual personal work history when discussing chronology.
+
+### Latest verification and remaining setup
+
+On 2026-10-31 the existing PostgreSQL database was checked with both validation scripts, the first five analytical scripts (without rewriting exports), the advanced SQL demonstrations and the indexed benchmark harness. The revenue and retention queries reproduced the published key figures. Advanced demonstrations ended with no demonstration rows and all 2,207,973 source rows intact. Existing SQL files were not changed.
+
+A separate empty database named `saas_interview_20261031` was created for a clean rebuild. Authentication for that database was unavailable, so no schema or CSVs were loaded into it and no fresh unindexed baseline was obtained. Configure local PostgreSQL authentication for the chosen verification database without committing credentials. Then use the documented setup order, passing `-v project_database=saas_interview_20261031` consistently. Capture the benchmark output with psql's `-o` option before indexes and again after indexes; retain both runs and compare the same queries and settings. Do not drop existing indexes merely to recreate a historical number.
+
+## Optional Python invoice novelty extension
+
+The existing SQL files and source CSVs are unchanged. `python/invoice_novelty.py` reads three CSVs, creates one feature row per invoice with a validated many-to-one subscription join, and trains an Isolation Forest. This is an implemented unsupervised ML extension, not a supervised fraud classifier or forecast of future anomalies.
+
+```powershell
+python -m pip install -r python/requirements.txt
+python -m unittest discover -s python -p "test_*.py"
+python python/invoice_novelty.py
+```
+
+Run with Python 3.11.9 (tested environment) from the repository root. The script resolves input/output paths from its own location and writes only `results/python/`. It does not connect to or modify PostgreSQL. Re-running replaces its generated output files. No model pickle is loaded or required; the deterministic training command rebuilds the model.
+
+| Design choice | Implementation |
+|---|---|
+| Features available at invoice creation | Log invoice amount, due-date interval, subscription tenure, prior invoice gap, first-invoice indicator |
+| Training | Invoices before 2025-01-01 |
+| Threshold calibration | 2025 invoices; strictly above the 99th percentile of novelty scores |
+| Held-out test | 2026-01-01 through 2026-09-30 |
+| Model | 100-tree Isolation Forest, max_samples=2048, seed=42, one worker |
+| Outputs | Held-out invoice scores, source-segment summary, versions/split counts/source hashes |
+| Evaluation | Review volume and retrospective overlap with paid-invoice/no-success rules; no claimed precision, recall or fraud accuracy |
+
+No payment status, invoice status, recovery outcome, source label or SQL review flag enters the model. Outcomes are joined only after scoring for diagnostic comparison. The model uses no future invoice gap. Same-day invoice IDs provide a deterministic order; without event timestamps the within-day order cannot be independently established. Repeated subscriptions across time are allowed, so this evaluates later invoices, not generalization to unseen customers.
+
+The model pools original and synthetic data. It can flag generator artifacts, annual billing or source distribution shifts rather than errors. The source-segment report makes this visible; it does not remove the bias. A 99th-percentile calibration threshold expresses an approximate review budget, not a measured anomaly prevalence. Ties and distribution shift mean the test flag rate need not equal 1%.
+
+The five tests check temporal split boundaries, invariance of past features when future invoices are appended, rejection of duplicate invoice IDs and duplicate parent keys, and exclusion of outcome columns from features. CSV SHA-256 hashes recorded before and after execution verify that the three consumed inputs are unchanged.
+
+Scikit-learn documents that lower `score_samples` values indicate more unusual observations; this extension negates that score for a higher-is-more-unusual ranking. Scores are not probabilities. See the [official IsolationForest reference](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.IsolationForest.html).
+
+For interviews: “I retained SQL rules for explainable reconciliation and added a separate unsupervised Python experiment for invoice novelty. I trained on earlier periods, calibrated a review threshold on a later period and held out 2026. Because there are no independently verified labels, I report workload and rule overlap rather than claiming fraud-detection accuracy.”
+
+### Executed Python results
+
+The extension was executed on 2026-10-31 with the pinned environment. It trained on **156,942** invoices, calibrated on **246,472**, and scored **222,909** held-out invoices. It flagged **2,261 (1.014%)** for review. Among those flags, **124** also matched the retrospective SQL review proxy; there were **12,189** proxy-positive invoices in the holdout overall. This overlap is not detection accuracy or evidence of incremental business value. The model and reconciliation rules ask different questions.
+
+**Every held-out invoice is synthetic.** The temporal test provides no evidence of generalization to original-source invoice anomalies. Future evaluation needs independently reviewed examples and an original-source holdout with sufficient later history. The existing results should be presented as a reproducible experiment, not a validated production detector.
+
+Generated artifacts: [invoice scores](results/python/invoice_novelty_scores.csv), [source summary](results/python/novelty_summary.csv), and [run metadata with input hashes](results/python/run_metadata.json). Scores and feature values support investigation; no model attribution or causal explanation is claimed.

@@ -36,3 +36,8 @@ data/*.tar.gz
 
 # Local development instructions
 AGENTS.md
+
+# Python extension caches and local environments
+__pycache__/
+*.pyc
+.venv/

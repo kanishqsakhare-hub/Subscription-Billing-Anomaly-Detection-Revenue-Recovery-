@@ -99,3 +99,7 @@ No other `.md` files should be introduced unless necessary. An included dataset-
 - Recovery claims are qualified as simulated/inferred, not real-world payments or fraud determinations.
 - Reproducible from documented PostgreSQL version, commands and local relative file paths (or explicit environment-specific setup).
 - Performance claims backed by executed `EXPLAIN (ANALYZE, BUFFERS)` outputs before and after indexing, not guesses.
+
+## Authorized optional Python extension
+
+The PostgreSQL core above remains the original contract. The subsequent project scope permits a separate Python extension while preserving every existing SQL file and source CSV. The extension adds only `python/invoice_novelty.py`, `python/test_invoice_novelty.py`, `python/requirements.txt`, and executed artifacts under `results/python/`; explanations remain in this README and the existing root documentation. The extension is unsupervised invoice-time novelty detection with a temporal holdout, not fake-engagement detection, acquisition-funnel analysis or prediction of future payment failures. No independent anomaly labels are available; rule overlap must not be described as accuracy. See README for commands, methodology and measured results.
